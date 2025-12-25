@@ -75,7 +75,6 @@ The model extracts 70 features from each DNA sequence:
 
 | State | Count | State | Count | State | Count |
 |-------|-------|-------|-------|-------|-------|
-
 | 1 | 4,238 | 7 | 3,420 | 13 | 8,667 |
 | 2 | 4,914 | 8 | 6,853 | 14 | 9,512 |
 | 3 | 2,877 | 9 | 8,404 | 15 | 9,267 |
