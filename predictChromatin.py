@@ -1,3 +1,21 @@
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+from tqdm import tqdm
+import time
+import warnings
+warnings.filterwarnings('ignore')
+
+# Modular feature extraction imports
+from motif_features import extract_motif_features
+from encode_features import extract_encode_features
+from advanced_kmer_features import extract_advanced_kmer_features
+
+"""
+Chromatin State Prediction from DNA Sequences
+"""
+
 def load_data():
     """
     Load training and test data
@@ -21,17 +39,22 @@ def load_data():
 
 def encode_dataset(sequences, max_samples=None):
     """
-    Encode all sequences in dataset
+    Encode all sequences in dataset with progress bar and time tracking
     """
     if max_samples:
         sequences = sequences[:max_samples]
 
     print(f"Encoding {len(sequences)} sequences...")
+    start_time = time.time()
     encoded = []
-    for i, seq in enumerate(sequences):
-        if (i + 1) % 10000 == 0:
-            print(f"  Processed {i + 1}/{len(sequences)} sequences")
+    
+    # Use tqdm for progress bar
+    for seq in tqdm(sequences, desc="Encoding sequences", unit="seq"):
         encoded.append(extract_features(seq))
+    
+    elapsed_time = time.time() - start_time
+    print(f"  Completed in {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)")
+    print(f"  Average: {elapsed_time/len(sequences):.4f} seconds per sequence")
 
     return np.array(encoded)
 
@@ -57,18 +80,6 @@ def train_model(X_train, y_train):
     print(f"Training accuracy: {model.score(X_train, y_train):.4f}")
 
     return model
-
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_val_score
-import warnings
-warnings.filterwarnings('ignore')
-
-# Modular feature extraction imports
-from motif_features import extract_motif_features
-from encode_features import extract_encode_features
-from advanced_kmer_features import extract_advanced_kmer_features
 
 """
 Chromatin State Prediction from DNA Sequences
