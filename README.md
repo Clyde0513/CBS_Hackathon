@@ -31,56 +31,108 @@ This project predicts chromatin states (18 classes) from 200bp DNA sequences usi
 
 ## Solution Approach
 
-### Feature Engineering
+### Evolution of Models
 
-The model extracts 70 features from each DNA sequence:
+#### Version 1: Baseline Random Forest (Accuracy: ~17,536/100,008)
+- 70 features: Basic composition + 3-mer frequencies
+- Single Random Forest model
+- Training accuracy: 99.93%
 
-1. **Basic Composition Features (6 features):**
-   - GC content
-   - AT content
-   - Individual nucleotide counts (A, C, G, T)
+#### Version 2: Hybrid XGBoost + Random Forest (Accuracy: ~17,536/100,008)
+- 381 features: Enhanced with 4-mers, positional, complexity features
+- 2-model ensemble (XGBoost + Random Forest)
 
-2. **K-mer Features (64 features):**
-   - 3-mer frequency encoding
-   - Counts of all possible 3-nucleotide combinations (4³ = 64 possible 3-mers)
+#### Version 3: Optimized 4-Model Ensemble (Accuracy: 18,386/100,008 = 18.38%)
+**Current Best Model**
 
-### Model Architecture
+### Feature Engineering (1,424 Features)
 
-- As of now:
-- **ML Model:** Random Forest Classifier
-- **Configuration:**
-  - 200 decision trees
-  - Max depth: 30
-  - Min samples split: 5
-  - Min samples leaf: 2
-  - Parallel processing enabled (8 cores)
+1. **Basic Composition (10 features):**
+   - Nucleotide frequencies (A, C, G, T)
+   - GC/AT content and skew
+   - Purine/Pyrimidine content
+
+2. **K-mer Frequencies:**
+   - 2-mers (16 features)
+   - 3-mers (64 features)
+   - 4-mers (256 features)
+   - 5-mers (1,024 features) - Captures longer sequence patterns
+
+3. **Positional Features (20 features):**
+   - Windowed GC and purine content across 10 sequence windows
+   - Captures position-dependent patterns
+
+4. **Sequence Complexity (7 features):**
+   - Shannon entropy
+   - Linguistic complexity (2-5 mers)
+   - CpG island indicators
+   - Tandem repeat detection
+
+5. **Dinucleotide Transitions (16 features):**
+   - All dinucleotide transition frequencies
+
+6. **Structural Features (8 features):**
+   - Homopolymer run analysis (max and average runs)
+
+7. **Palindrome Features (3 features):**
+   - Detection of palindromic sequences (important for DNA binding sites)
+
+### Model Architecture - 4-Model Ensemble
+
+**Ensemble Weights:**
+- XGBoost: 30%
+- LightGBM: 30%
+- Random Forest: 25%
+- Extra Trees: 15%
+
+**Individual Model Configurations:**
+
+1. **XGBoost:**
+   - 300 estimators, depth 12
+   - Regularization: alpha=0.1, lambda=1.0
+   - Learning rate: 0.08
+
+2. **LightGBM:**
+   - 300 estimators, depth 12
+   - 50 leaves, learning rate: 0.08
+   - Optimized for speed and memory
+
+3. **Random Forest:**
+   - 200 estimators, depth 25
+   - Bootstrap sampling (80%)
+   - sqrt feature selection
+
+4. **Extra Trees:**
+   - 200 estimators, depth 25
+   - More randomized splits for diversity
 
 ### Training Process
 
-1. Load training sequences and labels
-2. Extract features from each sequence
-3. Train Random Forest model on encoded features
-4. Generate predictions for test sequences
+1. Load training sequences and labels (286,164 samples)
+2. Extract 1,424 features from each sequence
+3. Train 4 ensemble models in parallel:
+   - XGBoost (gradient boosting)
+   - LightGBM (fast gradient boosting)
+   - Random Forest (bagging)
+   - Extra Trees (randomized bagging)
+4. Generate weighted ensemble predictions
 5. Save predictions in required format
 
 ## Results
 
 ### Model Performance
 
-- **Training Accuracy:** 99.93%
-- **Total Predictions:** 100,008
-- **Processing Time:** ~5 minutes
+**Best Model (Optimized 4-Model Ensemble):**
+- **Test Accuracy:** 18,386/100,008 = **18.38%**
+- **Training Accuracy (XGBoost):** 100%
+- **Training Accuracy (LightGBM):** ~47%
+- **Total Features:** 1,424
+- **Processing Time:** ~1.5 hours
 
-### Prediction Distribution
-
-| State | Count | State | Count | State | Count |
-|-------|-------|-------|-------|-------|-------|
-| 1 | 4,238 | 7 | 3,420 | 13 | 8,667 |
-| 2 | 4,914 | 8 | 6,853 | 14 | 9,512 |
-| 3 | 2,877 | 9 | 8,404 | 15 | 9,267 |
-| 4 | 3,172 | 10 | 5,515 | 16 | 4,067 |
-| 5 | 4,149 | 11 | 4,720 | 17 | 2,406 |
-| 6 | 3,534 | 12 | 4,818 | 18 | 9,475 |
+**Model Evolution:**
+- Baseline (RF only, 70 features): ~17.5%
+- Hybrid (XGB+RF, 381 features): ~17.5%
+- Optimized Ensemble (4 models, 1,424 features): **18.38%**
 
 ## Output
 
@@ -94,58 +146,99 @@ The model extracts 70 features from each DNA sequence:
 ### Requirements
 
 ```bash
-pip install numpy pandas scikit-learn
+pip install numpy pandas scikit-learn xgboost lightgbm
 ```
 
-### Running the Pipeline
+### Running the Models
 
+**Baseline Model (Fast, ~5 min):**
 ```bash
 python predictChromatin.py
 ```
 
-The script will:
+**Hybrid Model (Medium, ~10 min):**
+```bash
+python predictChromatin_hybrid.py
+```
 
+**Optimized Ensemble (Best accuracy, ~20 min):**
+```bash
+python predictChromatin_optimized.py
+```
+
+Each script will:
 1. Load training and test data
 2. Extract features and encode sequences
-3. Train the Random Forest model
+3. Train model(s)
 4. Generate predictions
 5. Save results to predictions.csv
 
 ## Files
 
-- `predictChromatin.py` - Main prediction pipeline script
-- `trainsequences.csv` - Training DNA sequences
-- `trainlabels.csv` - Training labels (1-18)
-- `testsequences.csv` - Test DNA sequences
-- `predictions.csv` - Generated predictions (output)
+### Main Scripts
+- `predictChromatin.py` - Baseline Random Forest (70 features)
+- `predictChromatin_hybrid.py` - XGBoost + Random Forest (381 features)
+- `predictChromatin_optimized.py` - **Best: 4-model ensemble (1,424 features)**
+
+### Data Files
+- `trainsequences.csv` - Training DNA sequences (286,164 samples)
+- `trainlabels.csv` - Training labels 1-18
+- `testsequences.csv` - Test DNA sequences (100,008 samples)
+
+### Output Files
+- `predictions.csv` - Final ensemble predictions
+- `predictions_xgb.csv` - XGBoost predictions
+- `predictions_lgb.csv` - LightGBM predictions
+- `predictions_rf.csv` - Random Forest predictions
+- `predictions_et.csv` - Extra Trees predictions
 
 ## Future Improvements
 
-### Potential Enhancements
+### Strategies to Reach 20k+ Accuracy
 
-1. **Advanced Models:**
-   - XGBoost or LightGBM for gradient boosting
-   - Deep learning models (CNN or LSTM for sequence modeling)
-   - Ensemble of multiple model types
+1. **Deep Learning Approaches:**
+   - Convolutional Neural Networks (CNN) for motif detection
+   - Bidirectional LSTM for sequence context
+   - Transformer models (DNA-BERT, Nucleotide Transformer)
+   - Attention mechanisms for important regions
 
-2. **Enhanced Features:**
-   - Longer k-mers (4-mers or 5-mers) for more sequence specificity
-   - Dinucleotide frequencies
-   - Positional features (e.g., GC content in different regions)
-   - DNA shape features
+2. **Advanced Feature Engineering:**
+   - DNA shape features (minor groove width, propeller twist)
+   - Reverse complement features
+   - TF binding motif enrichment
+   - Epigenetic signal patterns
+   - Longer k-mers (6-7 mers with sparse encoding)
 
-3. **Validation:**
-   - Cross-validation to estimate generalization performance
-   - Confusion matrix analysis
-   - Per-class performance metrics
+3. **Ensemble Improvements:**
+   - Stacking with meta-learner
+   - Cross-validation based ensemble weights
+   - CatBoost addition to ensemble
+   - Neural network + tree model hybrid
 
-4. **Optimization:**
-   - Hyperparameter tuning
-   - Feature selection
-   - Model compression for faster inference
+4. **Domain Knowledge Integration:**
+   - Known chromatin state patterns
+   - Histone modification signals
+   - DNA methylation patterns
+   - ATAC-seq accessibility features
+
+5. **Data Augmentation:**
+   - Reverse complement augmentation
+   - Sequence perturbations
+   - Semi-supervised learning
+
+## Key Insights
+
+- **5-mer features** (1,024 features) provide significant improvement over 3-4 mers alone
+- **Ensemble diversity** is crucial - combining gradient boosting + bagging methods
+- **LightGBM** underperformed on this dataset, suggesting overfitting or parameter issues
+- **Feature scaling** not needed for tree-based models and can hurt performance
+- **Memory constraints** limit very deep trees with high-dimensional features
 
 ## Project Information
 
-- **Starting Work Date:** December 24, 2025
+- **Start Date:** December 24, 2025
+- **Current Status:** December 25, 2025
 - **Event:** Computational Biology Hackathon
 - **Task:** Chromatin State Prediction Challenge
+- **Best Accuracy:** 18,386/100,008 (18.38%)
+- **Target:** 20,000+ (20%)
