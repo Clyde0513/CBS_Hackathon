@@ -136,7 +136,7 @@ def extract_features(sequence):
     kmer_features = encode_sequence_kmer(sequence, k=3)
 
     # Advanced k-mer features (modular): k-mer spectrum + position-aware binning
-    advanced_kmer_features = extract_advanced_kmer_features(sequence, k_range=(3, 4, 5, 6), num_bins=4)
+    advanced_kmer_features = extract_advanced_kmer_features(sequence, k_range=(3, 4), num_bins=4)
 
     # Motif features (modular)
     motif_features = extract_motif_features(sequence)
