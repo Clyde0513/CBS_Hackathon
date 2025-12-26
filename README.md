@@ -161,7 +161,7 @@ python predictChromatin.py
 python predictChromatin_hybrid.py
 ```
 
-**Optimized Ensemble (Best accuracy, ~20 min):**
+**Optimized Ensemble (Best accuracy, ~1.5 hours):**
 ```bash
 python predictChromatin_optimized.py
 ```
