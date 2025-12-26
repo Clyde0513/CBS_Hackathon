@@ -68,6 +68,7 @@ warnings.filterwarnings('ignore')
 # Modular feature extraction imports
 from motif_features import extract_motif_features
 from encode_features import extract_encode_features
+from advanced_kmer_features import extract_advanced_kmer_features
 
 """
 Chromatin State Prediction from DNA Sequences
@@ -123,6 +124,9 @@ def extract_features(sequence):
     # K-mer features (3-mers give 64 features)
     kmer_features = encode_sequence_kmer(sequence, k=3)
 
+    # Advanced k-mer features (modular): k-mer spectrum + position-aware binning
+    advanced_kmer_features = extract_advanced_kmer_features(sequence, k_range=(3, 4, 5, 6), num_bins=4)
+
     # Motif features (modular)
     motif_features = extract_motif_features(sequence)
 
@@ -131,7 +135,7 @@ def extract_features(sequence):
 
     # Combine features
     basic_features = [gc_content, at_content, a_count, c_count, g_count, t_count]
-    return np.concatenate([basic_features, kmer_features, motif_features, encode_features])
+    return np.concatenate([basic_features, kmer_features, motif_features, encode_features, advanced_kmer_features])
 
 def main():
     """
