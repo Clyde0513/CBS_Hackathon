@@ -129,6 +129,9 @@ def train_model(X_train, y_train, model_type='lightgbm', verbose=True, model_par
         return train_random_forest(X_train, y_train, verbose, **model_params)
     elif model_type == 'lightgbm':
         return train_lightgbm(X_train, y_train, verbose)
+    elif model_type == 'xgboost_rf_ensemble':
+        from ensemble_training import train_xgboost_rf_ensemble
+        return train_xgboost_rf_ensemble(X_train, y_train, verbose)
     else:
         raise ValueError(f"Unknown model_type: {model_type}. Use 'random_forest' or 'lightgbm'")
 
@@ -151,5 +154,17 @@ def predict(model, X_test, model_type='lightgbm'):
         y_pred = model.predict(X_test)
         # LightGBM returns 0-17, convert back to 1-18
         return np.argmax(y_pred, axis=1) + 1
+    elif model_type == 'xgboost_rf_ensemble':
+        from ensemble_training import predict_xgboost_rf_ensemble
+        return predict_xgboost_rf_ensemble(model, X_test)
     else:
         raise ValueError(f"Unknown model_type: {model_type}")
+
+
+def train_xgboost_rf_ensemble(X_train, y_train, verbose=True):
+    from ensemble_training import train_xgboost_rf_ensemble
+    return train_xgboost_rf_ensemble(X_train, y_train, verbose)
+
+def predict_xgboost_rf_ensemble(ensemble, X_test):
+    from ensemble_training import predict_xgboost_rf_ensemble
+    return predict_xgboost_rf_ensemble(ensemble, X_test)

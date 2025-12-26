@@ -7,7 +7,7 @@ USE_CACHE = True  # Set to False to force re-encoding features
 CACHE_DIR = 'feature_cache'  # Directory to store cached feature matrices
 
 # Model selection
-MODEL_TYPE = 'random_forest'  # Options: 'lightgbm' or 'random_forest'
+MODEL_TYPE = 'xgboost_rf_ensemble'  # Options: 'random_forest', 'lightgbm', 'xgboost_rf_ensemble'
 
 # Model hyperparameters (optional - defaults are in model_training.py)
 # Uncomment and modify if you want to override defaults:
@@ -31,3 +31,11 @@ RANDOM_FOREST_PARAMS = {
 #     'learning_rate': 0.1,
 #     'verbose': -1
 # }
+
+# Cross-validation configuration
+ENABLE_CROSS_VALIDATION = True  # Set to True to enable cross-validation
+CROSS_VALIDATION_PARAMS = {
+    'cv': 5,  # Number of folds
+    'scoring': 'accuracy',  # Metric for evaluation
+    'verbose': True  # Print progress and results
+}

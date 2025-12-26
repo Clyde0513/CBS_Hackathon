@@ -12,6 +12,7 @@ from motif_features import extract_motif_features
 from encode_features import extract_encode_features
 from advanced_kmer_features import extract_advanced_kmer_features
 from context_features import extract_context_features
+from reverse_complement_features import extract_strand_symmetric_features, reverse_complement
 
 # Modular model training imports
 from model_training import train_model, predict
@@ -20,7 +21,7 @@ from model_training import train_model, predict
 from feature_cache import save_features, load_features, cache_exists
 
 # Configuration imports
-from vars import USE_CACHE, CACHE_DIR, MODEL_TYPE
+from vars import USE_CACHE, CACHE_DIR, MODEL_TYPE, ENABLE_CROSS_VALIDATION, CROSS_VALIDATION_PARAMS
 
 # Try to import custom model parameters if defined
 try:
@@ -145,9 +146,28 @@ def extract_features(sequence):
     # Sequence context features (modular): dinucleotides, structure, periodicity
     context_features = extract_context_features(sequence)
 
+    # Reverse complement features (modular): strand-symmetric features
+    # Critical for chromatin binding as proteins can bind to either DNA strand
+    rc_features = extract_strand_symmetric_features(sequence)
+    
+    # Also extract features from reverse complement sequence
+    rev_comp_seq = reverse_complement(sequence)
+    rc_motif_features = extract_motif_features(rev_comp_seq)
+    rc_encode_features = extract_encode_features(rev_comp_seq)
+
     # Combine features
     basic_features = [gc_content, at_content, a_count, c_count, g_count, t_count]
-    return np.concatenate([basic_features, kmer_features, motif_features, encode_features, advanced_kmer_features, context_features])
+    return np.concatenate([
+        basic_features, 
+        kmer_features, 
+        motif_features, 
+        encode_features, 
+        advanced_kmer_features, 
+        context_features,
+        rc_features,
+        rc_motif_features,
+        rc_encode_features
+    ])
 
 def main():
     """
@@ -206,6 +226,17 @@ def main():
     model_params = RANDOM_FOREST_PARAMS if MODEL_TYPE == 'random_forest' else LIGHTGBM_PARAMS
     
     model = train_model(X_train, train_labels, model_type=MODEL_TYPE, model_params=model_params)
+
+    # Optional cross-validation
+    if ENABLE_CROSS_VALIDATION:
+        from cross_validation import perform_cross_validation
+        print("\n" + "="*60)
+        print("Cross-Validation")
+        print("="*60)
+        mean_score, std_score = perform_cross_validation(
+            model, X_train, train_labels, **CROSS_VALIDATION_PARAMS
+        )
+        print(f"Cross-validation mean accuracy: {mean_score:.4f} (+/- {std_score:.4f})")
 
     # Make predictions
     print("\n" + "="*60)
