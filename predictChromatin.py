@@ -11,6 +11,27 @@ warnings.filterwarnings('ignore')
 from motif_features import extract_motif_features
 from encode_features import extract_encode_features
 from advanced_kmer_features import extract_advanced_kmer_features
+from context_features import extract_context_features
+
+# Modular model training imports
+from model_training import train_model, predict
+
+# Feature caching imports
+from feature_cache import save_features, load_features, cache_exists
+
+# Configuration imports
+from vars import USE_CACHE, CACHE_DIR, MODEL_TYPE
+
+# Try to import custom model parameters if defined
+try:
+    from vars import RANDOM_FOREST_PARAMS
+except ImportError:
+    RANDOM_FOREST_PARAMS = None
+
+try:
+    from vars import LIGHTGBM_PARAMS
+except ImportError:
+    LIGHTGBM_PARAMS = None
 
 """
 Chromatin State Prediction from DNA Sequences
@@ -57,29 +78,6 @@ def encode_dataset(sequences, max_samples=None):
     print(f"  Average: {elapsed_time/len(sequences):.4f} seconds per sequence")
 
     return np.array(encoded)
-
-def train_model(X_train, y_train):
-    """
-    Train Random Forest classifier
-    """
-    print("\nTraining Random Forest model...")
-
-    # Use a strong ensemble model
-    model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=30,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        n_jobs=-1,
-        random_state=42,
-        verbose=1
-    )
-
-    model.fit(X_train, y_train)
-
-    print(f"Training accuracy: {model.score(X_train, y_train):.4f}")
-
-    return model
 
 """
 Chromatin State Prediction from DNA Sequences
@@ -144,9 +142,12 @@ def extract_features(sequence):
     # ENCODE-inspired chromatin mark features (modular)
     encode_features = extract_encode_features(sequence)
 
+    # Sequence context features (modular): dinucleotides, structure, periodicity
+    context_features = extract_context_features(sequence)
+
     # Combine features
     basic_features = [gc_content, at_content, a_count, c_count, g_count, t_count]
-    return np.concatenate([basic_features, kmer_features, motif_features, encode_features, advanced_kmer_features])
+    return np.concatenate([basic_features, kmer_features, motif_features, encode_features, advanced_kmer_features, context_features])
 
 def main():
     """
@@ -154,21 +155,44 @@ def main():
     """
     print("="*60)
     print("Chromatin State Prediction Pipeline")
+    print(f"Model: {MODEL_TYPE.upper()}")
     print("="*60)
 
     # Load data
     train_sequences, train_labels, test_sequences = load_data()
 
-    # Encode sequences
-    print("\n" + "="*60)
-    print("Encoding training data...")
-    print("="*60)
-    X_train = encode_dataset(train_sequences)
+    # Try to load cached features
+    X_train, y_train, X_test = None, None, None
+    
+    if USE_CACHE and cache_exists(CACHE_DIR):
+        print("\n" + "="*60)
+        print("Loading cached features...")
+        print("="*60)
+        X_train, y_train, X_test = load_features(CACHE_DIR)
+        
+        # Verify labels match
+        if y_train is not None and not np.array_equal(y_train, train_labels):
+            print("⚠️  Warning: Cached labels don't match current labels. Re-encoding...")
+            X_train, y_train, X_test = None, None, None
+    
+    # Encode sequences if cache not available
+    if X_train is None:
+        print("\n" + "="*60)
+        print("Encoding training data...")
+        print("="*60)
+        X_train = encode_dataset(train_sequences)
 
-    print("\n" + "="*60)
-    print("Encoding test data...")
-    print("="*60)
-    X_test = encode_dataset(test_sequences)
+        print("\n" + "="*60)
+        print("Encoding test data...")
+        print("="*60)
+        X_test = encode_dataset(test_sequences)
+        
+        # Save features for future runs
+        if USE_CACHE:
+            print("\n" + "="*60)
+            print("Caching features for future runs...")
+            print("="*60)
+            save_features(X_train, train_labels, X_test, CACHE_DIR)
 
     print(f"\nTraining feature matrix shape: {X_train.shape}")
     print(f"Test feature matrix shape: {X_test.shape}")
@@ -177,13 +201,17 @@ def main():
     print("\n" + "="*60)
     print("Model Training")
     print("="*60)
-    model = train_model(X_train, train_labels)
+    
+    # Get model parameters if defined
+    model_params = RANDOM_FOREST_PARAMS if MODEL_TYPE == 'random_forest' else LIGHTGBM_PARAMS
+    
+    model = train_model(X_train, train_labels, model_type=MODEL_TYPE, model_params=model_params)
 
     # Make predictions
     print("\n" + "="*60)
     print("Making predictions on test set...")
     print("="*60)
-    predictions = model.predict(X_test)
+    predictions = predict(model, X_test, model_type=MODEL_TYPE)
 
     # Save predictions
     print("\nSaving predictions to predictions.csv...")
