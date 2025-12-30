@@ -46,7 +46,7 @@ class AdvancedDNAFeatureExtractor:
         
         return np.array([a_count, c_count, g_count, t_count, 
                         gc_content, at_content, gc_skew, at_skew,
-                        purine_content, pyrimidine_content])
+                        purine_content, pyrimidine_content], dtype=np.float32)
     
     def kmer_frequencies(self, sequence, k):
         """K-mer frequency features"""
@@ -54,7 +54,7 @@ class AdvancedDNAFeatureExtractor:
         kmer_counts = Counter(kmers)
         
         all_kmers = [''.join(p) for p in product(self.nucleotides, repeat=k)]
-        features = np.array([kmer_counts.get(kmer, 0) for kmer in all_kmers])
+        features = np.array([kmer_counts.get(kmer, 0) for kmer in all_kmers], dtype=np.float32)
         
         return features / (len(sequence) - k + 1)
     
@@ -74,7 +74,7 @@ class AdvancedDNAFeatureExtractor:
             
             features.extend([gc, purine])
         
-        return np.array(features)
+        return np.array(features, dtype=np.float32)
     
     def sequence_complexity(self, sequence):
         """Enhanced sequence complexity features"""
@@ -104,7 +104,7 @@ class AdvancedDNAFeatureExtractor:
                 if sequence[i+k:i+k*2] == kmer:
                     max_tandem = max(max_tandem, k)
         
-        return np.array([entropy] + complexities + [cg_ratio, max_tandem/10])
+        return np.array([entropy] + complexities + [cg_ratio, max_tandem/10], dtype=np.float32)
     
     def dinucleotide_transitions(self, sequence):
         """Enhanced dinucleotide transition features"""
@@ -114,7 +114,7 @@ class AdvancedDNAFeatureExtractor:
                 dinuc = n1 + n2
                 transitions[dinuc] = sequence.count(dinuc)
         
-        features = np.array(list(transitions.values())) / (len(sequence) - 1)
+        features = np.array(list(transitions.values()), dtype=np.float32) / (len(sequence) - 1)
         return features
     
     def structural_features(self, sequence):
@@ -139,8 +139,8 @@ class AdvancedDNAFeatureExtractor:
             max_runs[nuc] = max(runs) if runs else 0
             avg_runs[nuc] = np.mean(runs) if runs else 0
         
-        max_features = np.array(list(max_runs.values())) / len(sequence)
-        avg_features = np.array(list(avg_runs.values())) / len(sequence)
+        max_features = np.array(list(max_runs.values()), dtype=np.float32) / len(sequence)
+        avg_features = np.array(list(avg_runs.values()), dtype=np.float32) / len(sequence)
         
         return np.concatenate([max_features, avg_features])
     
@@ -157,7 +157,7 @@ class AdvancedDNAFeatureExtractor:
                     count += 1
             palindrome_counts.append(count / (len(sequence) - k + 1))
         
-        return np.array(palindrome_counts)
+        return np.array(palindrome_counts, dtype=np.float32)
     
     def extract_all_features(self, sequence):
         """Extract comprehensive feature set"""
@@ -187,7 +187,7 @@ class AdvancedDNAFeatureExtractor:
         # Palindrome features (3)
         features.append(self.palindrome_features(sequence))
         
-        return np.concatenate(features)
+        return np.concatenate(features).astype(np.float32)
 
 def load_data():
     """Load training and test data"""
@@ -217,7 +217,7 @@ def encode_sequences(sequences, extractor):
             print(f"  Processed {i + 1}/{len(sequences)} sequences")
         encoded.append(extractor.extract_all_features(seq))
     
-    return np.array(encoded)
+    return np.array(encoded, dtype=np.float32)
 
 def train_xgboost_model(X_train, y_train):
     """Train XGBoost with optimized parameters"""
